@@ -1,13 +1,20 @@
-﻿'use client';
-import React, { useEffect, useMemo, useState } from 'react';
-import type { WayfinderConfig } from '@wayfinder/core';
+﻿// packages/next/src/provider.tsx
+'use client';
+import React, { createContext, useEffect, useState } from 'react';
 import { Wayfinder } from '@wayfinder/core';
+import type { WayfinderConfig } from '@wayfinder/core'; // make sure this is here!
 
-export const WayfinderContext = React.createContext<{ wf: any | null }>({ wf: null });
+export const WayfinderContext = createContext<{ wf: Wayfinder | null }>({ wf: null });
 
-export function WayfinderProvider({ children, config }: { children: React.ReactNode, config?: WayfinderConfig }) {
-  const [wf, setWf] = useState<any>(null);
-  useEffect(() => { (async () => setWf(await Wayfinder.init(config)))(); }, [JSON.stringify(config)]);
-  const value = useMemo(() => ({ wf }), [wf]);
-  return <WayfinderContext.Provider value={value}>{children}</WayfinderContext.Provider>;
+export function WayfinderProvider({ children, config }: { children: React.ReactNode; config?: WayfinderConfig }) {
+  const [wf, setWf] = useState<Wayfinder | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const instance = await Wayfinder.init(config);
+      setWf(instance);
+    })();
+  }, [config]);
+
+  return <WayfinderContext.Provider value={{ wf }}>{children}</WayfinderContext.Provider>;
 }

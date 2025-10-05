@@ -13,8 +13,10 @@ export async function enqueueMutation(env: MutationEnvelope) {
   await publishCount();
 }
 
-export async function processQueue() {
+export async function processQueue(): Promise<MutationEnvelope[]> {
   const list = await idbAll<MutationEnvelope>('mutations');
+  const synced: MutationEnvelope[] = [];
+
   for (const m of list) {
     try {
       const res = await fetch(m.url, {
@@ -24,12 +26,16 @@ export async function processQueue() {
       });
       if (res.ok) {
         await idbDel('mutations', m.id);
+        synced.push(m);
         await publishCount();
       }
     } catch {
-      // stay queued
+      // stay queued; try again later
     }
   }
+
   const remaining = await idbAll<MutationEnvelope>('mutations');
   if (remaining.length === 0) bus.emit('sync:complete', {});
+
+  return synced;
 }

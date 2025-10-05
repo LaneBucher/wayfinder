@@ -2,16 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { WayfinderProvider, useWayfinder } from '@wayfinder/next';
+import CacheInspector from './CacheInspector';
 
-// Small floating status badge showing Online/Offline + Queue length
 function StatusBadge() {
   const wf = useWayfinder();
-  const [online, setOnline] = useState<boolean>(
+  const [online, setOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
-  const [queue, setQueue] = useState<number>(0);
+  const [queue, setQueue] = useState(0);
 
-  // Track online/offline status
   useEffect(() => {
     const goOnline = () => setOnline(true);
     const goOffline = () => setOnline(false);
@@ -23,20 +22,19 @@ function StatusBadge() {
     };
   }, []);
 
-  // Subscribe to Wayfinder queue events
   useEffect(() => {
-    if (!wf) return;
+    if (!wf?.events) return;
     const onCount = (e: any) => setQueue(e.detail.count ?? 0);
     const onComplete = () => setQueue(0);
-    wf.events?.on?.('queue:count', onCount);
-    wf.events?.on?.('sync:complete', onComplete);
+    wf.events.on('queue:count', onCount);
+    wf.events.on('sync:complete', onComplete);
     return () => {
-      wf.events?.off?.('queue:count', onCount);
-      wf.events?.off?.('sync:complete', onComplete);
+      wf.events?.off('queue:count', onCount);
+      wf.events?.off('sync:complete', onComplete);
     };
   }, [wf]);
 
-  const bg = online ? '#10b981' : '#ef4444'; // green / red
+  const bg = online ? '#10b981' : '#ef4444';
   const label = online ? 'Online' : 'Offline';
 
   return (
@@ -71,13 +69,12 @@ function StatusBadge() {
   );
 }
 
-// ✅ Demo component showing cached GETs and queued PUTs
 function Demo() {
-  const wf = useWayfinder(); // can be null initially
+  const wf = useWayfinder();
   const [posts, setPosts] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!wf) return; // wait until initialized
+    if (!wf) return;
     (async () => {
       try {
         const data = await wf.get<any[]>(
@@ -85,7 +82,7 @@ function Demo() {
         );
         setPosts(data.slice(0, 5));
       } catch {
-        const data = await wf.get<any[]>(
+        const data = await wf?.get<any[]>(
           'https://jsonplaceholder.typicode.com/posts',
           { strategy: 'cacheFirst' }
         );
@@ -104,7 +101,7 @@ function Demo() {
 
   async function editFirst() {
     const first = posts[0];
-    if (!first) return;
+    if (!first || !wf) return;
     const res = await wf.mutate(
       `https://jsonplaceholder.typicode.com/posts/${first.id}`,
       {
@@ -119,7 +116,7 @@ function Demo() {
   return (
     <main style={{ padding: 24 }}>
       <h1>Wayfinder Offline Demo</h1>
-      <button onClick={() => wf.processQueueNow()}>Process Queue</button>
+      <button onClick={() => wf?.processQueueNow()}>Process Queue</button>
       <button onClick={editFirst} style={{ marginLeft: 12 }}>
         Edit First Post
       </button>
@@ -135,14 +132,40 @@ function Demo() {
         queue.
       </p>
       <StatusBadge />
+      <CacheInspector />
     </main>
   );
 }
 
-// ✅ Wrap everything in WayfinderProvider
+function createLoggerPlugin() {
+  return {
+    name: 'LoggerPlugin',
+    onInit() { console.log('[LoggerPlugin] initialized'); },
+    onFetch(url: string) { console.log('[LoggerPlugin] fetch', url); },
+    onMutateQueue(env: any) { console.log('[LoggerPlugin] queued', env.url); },
+    onSync(env: any) { console.log('[LoggerPlugin] synced', env.url); },
+    onOnline() { console.log('[LoggerPlugin] back online'); },
+  };
+}
+
+function createAnalyticsPlugin() {
+  return {
+    name: 'AnalyticsPlugin',
+    onFetch(url: string) { console.log('[AnalyticsPlugin] fetch tracked:', url); },
+    onOnline() {
+      try { navigator.sendBeacon?.('/analytics/event', JSON.stringify({ type: 'online', ts: Date.now() })); } catch {}
+    },
+  };
+}
+
 export default function Page() {
   return (
-    <WayfinderProvider config={{ data: { defaultPolicy: 'networkThenCache' } }}>
+    <WayfinderProvider
+      config={{
+        data: { defaultPolicy: 'networkThenCache' },
+        plugins: [createLoggerPlugin(), createAnalyticsPlugin()],
+      }}
+    >
       <Demo />
     </WayfinderProvider>
   );

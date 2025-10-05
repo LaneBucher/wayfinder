@@ -1,6 +1,7 @@
 ﻿// packages/core/src/strategies.ts
 import { idbGet, idbSet } from './storage';
 import type { CacheStrategy } from './types';
+import { parseTTL, upsertIndex } from './cacheIndex';
 
 function reqKey(url: string, init?: RequestInit) {
   const method = (init?.method || 'GET').toUpperCase();
@@ -16,37 +17,14 @@ function headersToObject(h: Headers) {
 export async function cachedFetch(
   url: string,
   init: RequestInit = {},
-  strategy: CacheStrategy = 'networkThenCache'
+  strategy: CacheStrategy = 'networkThenCache',
+  opts?: { ttl?: string; meta?: Record<string, any> }
 ): Promise<Response> {
   const key = reqKey(url, init);
   const cached = await idbGet<any>('responses', key);
+  const ttlMs = parseTTL(opts?.ttl);
 
-  if (strategy === 'cacheFirst' && cached) {
-    return new Response(cached.body, { status: cached.status, headers: cached.headers });
-  }
-
-  if (strategy === 'staleWhileRevalidate') {
-    if (cached) {
-      // Refresh in background
-      fetch(url, init)
-        .then(async (r) => {
-          const body = await r.clone().arrayBuffer();
-          await idbSet('responses', key, {
-            ts: Date.now(),
-            status: r.status,
-            headers: headersToObject(r.headers),
-            body
-          });
-        })
-        .catch(() => {});
-      return new Response(cached.body, { status: cached.status, headers: cached.headers });
-    }
-    // fall through to network if nothing cached
-  }
-
-  // networkThenCache (or fallback)
-  try {
-    const r = await fetch(url, init);
+  const write = async (r: Response) => {
     const body = await r.clone().arrayBuffer();
     await idbSet('responses', key, {
       ts: Date.now(),
@@ -54,6 +32,30 @@ export async function cachedFetch(
       headers: headersToObject(r.headers),
       body
     });
+    await upsertIndex({
+      key,
+      url,
+      method: (init.method || 'GET').toUpperCase(),
+      ts: Date.now(),
+      ttlMs,
+      meta: opts?.meta
+    });
+  };
+
+  if (strategy === 'cacheFirst' && cached) {
+    return new Response(cached.body, { status: cached.status, headers: cached.headers });
+  }
+
+  if (strategy === 'staleWhileRevalidate') {
+    if (cached) {
+      fetch(url, init).then(write).catch(() => {});
+      return new Response(cached.body, { status: cached.status, headers: cached.headers });
+    }
+  }
+
+  try {
+    const r = await fetch(url, init);
+    await write(r);
     return r;
   } catch (e) {
     if (cached) return new Response(cached.body, { status: cached.status, headers: cached.headers });
