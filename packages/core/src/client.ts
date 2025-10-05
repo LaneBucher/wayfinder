@@ -7,13 +7,67 @@ import { bus } from './events';
 let _config: WayfinderConfig = {};
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
+async function requestOneOffBGSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if ('sync' in reg) {
+      // @ts-expect-error: TS doesn't know about reg.sync in some lib versions
+      await reg.sync.register('wayfinder-sync');
+    }
+  } catch { /* ignore */ }
+}
+
+async function requestPeriodicBGSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg: any = await navigator.serviceWorker.ready;
+    const hasPeriodic = reg && reg.periodicSync && typeof reg.periodicSync.register === 'function';
+    if (hasPeriodic) {
+      // Try ~5 minutes; browsers may clamp
+      await reg.periodicSync.register('wayfinder-periodic-sync', { minInterval: 5 * 60 * 1000 });
+    }
+  } catch { /* ignore */ }
+}
+
+function startInPagePeriodicSync() {
+  // Fallback: in-page interval (runs only while a tab is open)
+  const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  setInterval(() => {
+    if (typeof navigator !== 'undefined' && navigator.onLine && document.visibilityState === 'visible') {
+      processQueue().catch(() => {});
+    }
+  }, INTERVAL_MS);
+}
+
 export class Wayfinder {
   static async init(config: WayfinderConfig = {}) {
     _config = config;
+
+    // Register SW & hook messages to trigger queue processing
     if ('serviceWorker' in navigator) {
-      try { await navigator.serviceWorker.register('/wayfinder-sw.js'); } catch {}
-      window.addEventListener('online', () => processQueue());
+      try {
+        await navigator.serviceWorker.register('/wayfinder-sw.js');
+      } catch { /* ignore */ }
+
+      // When SW says "sync", process the queue
+      navigator.serviceWorker.addEventListener('message', (e: MessageEvent) => {
+        const msg = (e?.data || {}) as any;
+        if (msg?.type === 'wayfinder-sync') {
+          processQueue().catch(() => {});
+        }
+      });
+
+      // Try setting up periodic background sync (where supported)
+      requestPeriodicBGSync().catch(() => {});
     }
+
+    // Flush whenever we come back online
+    window.addEventListener('online', () => { processQueue().catch(() => {}); });
+
+    // In-page periodic flush as a fallback
+    startInPagePeriodicSync();
+
     return new Wayfinder();
   }
 
@@ -44,7 +98,9 @@ export class Wayfinder {
       if (!res.ok) throw new Error('non-2xx');
       return res;
     } catch {
+      // Queue offline and request a background sync
       await enqueueMutation(env);
+      await requestOneOffBGSync();
       return new Response(null, { status: 202, statusText: 'Queued offline' }) as any;
     }
   }
