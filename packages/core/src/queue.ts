@@ -1,8 +1,16 @@
-﻿import { idbAll, idbDel, idbSet } from './storage';
+﻿// packages/core/src/queue.ts
+import { idbAll, idbDel, idbSet } from './storage';
 import type { MutationEnvelope } from './types';
+import { bus } from './events';
+
+async function publishCount() {
+  const list = await idbAll<MutationEnvelope>('mutations');
+  bus.emit('queue:count', { count: list.length });
+}
 
 export async function enqueueMutation(env: MutationEnvelope) {
   await idbSet('mutations', env.id, env);
+  await publishCount();
 }
 
 export async function processQueue() {
@@ -14,7 +22,14 @@ export async function processQueue() {
         headers: m.headers,
         body: m.body ? JSON.stringify(m.body) : undefined
       });
-      if (res.ok) await idbDel('mutations', m.id);
-    } catch { /* keep queued */ }
+      if (res.ok) {
+        await idbDel('mutations', m.id);
+        await publishCount();
+      }
+    } catch {
+      // stay queued
+    }
   }
+  const remaining = await idbAll<MutationEnvelope>('mutations');
+  if (remaining.length === 0) bus.emit('sync:complete', {});
 }

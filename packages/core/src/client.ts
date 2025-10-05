@@ -1,6 +1,8 @@
-﻿import { cachedFetch } from './strategies';
+﻿// packages/core/src/client.ts
+import { cachedFetch } from './strategies';
 import { enqueueMutation, processQueue } from './queue';
 import type { CacheStrategy, MutationEnvelope, WayfinderConfig } from './types';
+import { bus } from './events';
 
 let _config: WayfinderConfig = {};
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -14,6 +16,9 @@ export class Wayfinder {
     }
     return new Wayfinder();
   }
+
+  // expose a read-only event bus
+  get events() { return bus; }
 
   async get<T = any>(url: string, opts?: { strategy?: CacheStrategy, init?: RequestInit }): Promise<T> {
     const strategy = opts?.strategy ?? _config.data?.defaultPolicy ?? 'networkThenCache';
