@@ -21,7 +21,7 @@ export default function StatusBadge() {
     };
   }, []);
 
-  // Safely attach Wayfinder event listeners (with ? guards)
+  // Safely attach Wayfinder event listeners
   useEffect(() => {
     if (!wf?.events) return;
     const onCount = (e: CustomEvent<{ count: number }>) =>

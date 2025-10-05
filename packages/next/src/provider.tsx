@@ -1,5 +1,4 @@
-﻿// packages/next/src/provider.tsx
-'use client';
+﻿'use client';
 import React, { createContext, useEffect, useState } from 'react';
 import { Wayfinder } from '@wayfinder/core';
 import type { WayfinderConfig } from '@wayfinder/core'; // make sure this is here!

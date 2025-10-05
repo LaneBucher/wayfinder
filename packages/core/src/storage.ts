@@ -1,5 +1,4 @@
-﻿// packages/core/src/storage.ts
-const DB_NAME = 'wayfinder';
+﻿const DB_NAME = 'wayfinder';
 const DB_VERSION = 2;
 const STORES = { responses: 'responses', mutations: 'mutations', index: 'index' } as const;
 type StoreName = typeof STORES[keyof typeof STORES];

@@ -1,5 +1,4 @@
-﻿// packages/core/src/client.ts
-import { cachedFetch } from './strategies';
+﻿import { cachedFetch } from './strategies';
 import { enqueueMutation, processQueue } from './queue';
 import type { CacheStrategy, MutationEnvelope, WayfinderConfig } from './types';
 import { bus } from './events';

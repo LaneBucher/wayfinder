@@ -1,11 +1,10 @@
-// packages/core/src/plugins/PrismaSyncPlugin.ts
 import type { WayfinderPlugin } from '../plugins';
 import type { MutationEnvelope } from '../types';
 
 export type PrismaSyncConfig = {
-  endpoint: string;              // e.g. '/api/sync'
-  batchSize?: number;            // default 50
-  defaultTTL?: string;           // e.g. '5m' for GET cache
+  endpoint: string;              
+  batchSize?: number; // default 50
+  defaultTTL?: string;           
 };
 
 export function createPrismaSyncPlugin(cfg: PrismaSyncConfig): WayfinderPlugin {
@@ -14,21 +13,18 @@ export function createPrismaSyncPlugin(cfg: PrismaSyncConfig): WayfinderPlugin {
   return {
     name: 'PrismaSyncPlugin',
 
-    // Tag fetches for better cache control (optional)
+    // Tag fetches for better cache control
     onFetch(url: string) {
-      // For now, no-op; future: attach headers or meta
-      // console.log('[PrismaSyncPlugin] fetch', url);
+        // could inspect URL to set custom metadata in future
     },
 
-    // When a mutation is queued, we could trigger a soft “soon” flush,
-    // but we already have background sync. Leaving as log for visibility.
+    // When core queues a mutation (POST/PUT/DELETE), log or notify
     onMutateQueue(env: MutationEnvelope) {
       console.log('[PrismaSyncPlugin] queued mutation', env.method, env.url);
     },
 
     // When core finishes a sync for a mutation (processQueueNow), optionally batch send to backend
     async onSync(env: MutationEnvelope) {
-      // In this simple demo we post each mutation directly; you can evolve to true batching
       try {
         const res = await fetch(cfg.endpoint, {
           method: 'POST',
@@ -45,14 +41,12 @@ export function createPrismaSyncPlugin(cfg: PrismaSyncConfig): WayfinderPlugin {
       }
     },
 
-    // Optionally respond to cache writes (e.g., warm relations, prefetch)
+    // respond to cache writes (e.g., warm relations, prefetch)
     onCacheWrite(entry) {
-      // Future: inspect entry.url & meta to prefetch related records
       // console.log('[PrismaSyncPlugin] cache write', entry.url);
     },
 
     onOnline() {
-      // Could trigger an extra flush here if desired
       // console.log('[PrismaSyncPlugin] back online');
     }
   };

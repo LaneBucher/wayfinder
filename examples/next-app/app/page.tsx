@@ -163,7 +163,6 @@ function createAnalyticsPlugin() {
   };
 }
 
-// TEMP: local Prisma-style sync plugin factory
 function createPrismaSyncPlugin(cfg: { endpoint: string; batchSize?: number; defaultTTL?: string }) {
   const batch = cfg.batchSize ?? 50;
   return {

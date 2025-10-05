@@ -1,5 +1,4 @@
-﻿// public/wayfinder-sw.js
-// Runtime-caching focused SW (dev-friendly) + background/periodic sync triggers.
+﻿// Runtime-caching focused SW
 const VERSION = 'wf-v6';
 
 self.addEventListener('activate', (event) => {
@@ -18,7 +17,7 @@ async function broadcast(type) {
   }
 }
 
-// Background Sync (one-off) — when the browser regains connectivity.
+// Background Sync when the browser regains connectivity.
 self.addEventListener('sync', (event) => {
   if (event.tag === 'wayfinder-sync') {
     event.waitUntil((async () => {

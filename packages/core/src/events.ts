@@ -1,4 +1,3 @@
-// packages/core/src/events.ts
 export type WayfinderEventMap = {
   'queue:count': { count: number };
   'sync:complete': {};

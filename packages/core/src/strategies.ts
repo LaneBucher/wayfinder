@@ -1,5 +1,4 @@
-﻿// packages/core/src/strategies.ts
-import { idbGet, idbSet } from './storage';
+﻿import { idbGet, idbSet } from './storage';
 import type { CacheStrategy } from './types';
 import { parseTTL, upsertIndex } from './cacheIndex';
 import { triggerHook } from './plugins';

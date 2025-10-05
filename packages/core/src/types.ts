@@ -1,6 +1,4 @@
-﻿// packages/core/src/types.ts
-
-import type { WayfinderPlugin } from './plugins';
+﻿import type { WayfinderPlugin } from './plugins';
 
 export type CacheStrategy =
   | 'cacheFirst'

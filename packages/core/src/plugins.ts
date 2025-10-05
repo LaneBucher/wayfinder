@@ -1,4 +1,3 @@
-// packages/core/src/plugins.ts
 import type { MutationEnvelope } from './types';
 import type { CacheIndexEntry } from './cacheIndex';
 
@@ -33,11 +32,7 @@ export function registerPlugins(plugins: WayfinderPlugin[], ctx: WayfinderPlugin
   }
 }
 
-/**
- * Trigger a lifecycle hook across all registered plugins.
- * We keep the type signature loose so TypeScript doesn’t choke
- * on non-function keys or undefined hooks.
- */
+// Trigger a specific hook on all registered plugins, in order.
 export async function triggerHook(hook: keyof WayfinderPlugin, ...args: any[]): Promise<void> {
   for (const p of _plugins) {
     const fn = (p as any)[hook];

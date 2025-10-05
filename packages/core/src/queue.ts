@@ -1,5 +1,4 @@
-﻿// packages/core/src/queue.ts
-import { idbAll, idbDel, idbSet } from './storage';
+﻿import { idbAll, idbDel, idbSet } from './storage';
 import type { MutationEnvelope } from './types';
 import { bus } from './events';
 

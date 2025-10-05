@@ -1,4 +1,3 @@
-// packages/core/src/cacheIndex.ts
 import { idbAll, idbDel, idbGet, idbSet } from './storage';
 
 export interface CacheIndexEntry {

@@ -1,5 +1,4 @@
-﻿// packages/next/src/useWayfinder.ts
-'use client';
+﻿'use client';
 import { useContext } from 'react';
 import { WayfinderContext } from './provider';
 import type { MutationEnvelope } from '@wayfinder/core';
