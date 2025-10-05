@@ -1,0 +1,16 @@
+{
+  "name": "wayfinder-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "dev": "pnpm -C examples/next-app dev",
+    "build": "pnpm -r --filter ./packages/** run build",
+    "start": "pnpm -C examples/next-app start"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

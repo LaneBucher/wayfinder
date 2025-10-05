@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# builds & caches
+.next/
+**/.next/
+dist/
+build/
+out/
+coverage/
+.cache/
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# environment
+.env*
