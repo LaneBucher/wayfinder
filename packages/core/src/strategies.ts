@@ -2,6 +2,7 @@
 import { idbGet, idbSet } from './storage';
 import type { CacheStrategy } from './types';
 import { parseTTL, upsertIndex } from './cacheIndex';
+import { triggerHook } from './plugins';
 
 function reqKey(url: string, init?: RequestInit) {
   const method = (init?.method || 'GET').toUpperCase();
@@ -26,20 +27,24 @@ export async function cachedFetch(
 
   const write = async (r: Response) => {
     const body = await r.clone().arrayBuffer();
-    await idbSet('responses', key, {
+    const record = {
       ts: Date.now(),
       status: r.status,
       headers: headersToObject(r.headers),
       body
-    });
-    await upsertIndex({
+    };
+    await idbSet('responses', key, record);
+    const entry = {
       key,
       url,
       method: (init.method || 'GET').toUpperCase(),
       ts: Date.now(),
       ttlMs,
       meta: opts?.meta
-    });
+    };
+    await upsertIndex(entry);
+    // 🔔 notify plugins
+    await triggerHook('onCacheWrite', entry as any);
   };
 
   if (strategy === 'cacheFirst' && cached) {

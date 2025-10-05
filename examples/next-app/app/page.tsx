@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react';
 import { WayfinderProvider, useWayfinder } from '@wayfinder/next';
 import CacheInspector from './CacheInspector';
+plugins: [
+  createLoggerPlugin(),
+  createAnalyticsPlugin(),
+  createPrismaSyncPlugin({ endpoint: '/api/sync', defaultTTL: '5m' }),
+]
 
 function StatusBadge() {
   const wf = useWayfinder();
@@ -158,12 +163,40 @@ function createAnalyticsPlugin() {
   };
 }
 
+// TEMP: local Prisma-style sync plugin factory
+function createPrismaSyncPlugin(cfg: { endpoint: string; batchSize?: number; defaultTTL?: string }) {
+  const batch = cfg.batchSize ?? 50;
+  return {
+    name: 'PrismaSyncPlugin',
+    onMutateQueue(env: any) {
+      console.log('[PrismaSyncPlugin] queued', env?.method, env?.url);
+    },
+    async onSync(env: any) {
+      try {
+        const res = await fetch(cfg.endpoint, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ mutations: [env] }),
+        });
+        if (!res.ok) console.warn('[PrismaSyncPlugin] server sync failed', res.status);
+      } catch (e) {
+        console.warn('[PrismaSyncPlugin] server sync error', e);
+      }
+    },
+  };
+}
+
+
 export default function Page() {
   return (
     <WayfinderProvider
       config={{
         data: { defaultPolicy: 'networkThenCache' },
-        plugins: [createLoggerPlugin(), createAnalyticsPlugin()],
+        plugins: [
+          createLoggerPlugin(),
+          createAnalyticsPlugin(),
+          createPrismaSyncPlugin({ endpoint: '/api/sync', defaultTTL: '5m' }),
+        ],
       }}
     >
       <Demo />

@@ -30,11 +30,11 @@ async function requestPeriodicBGSync() {
   } catch {}
 }
 
-function startInPagePeriodicSync() {
+function startInPagePeriodicSync(tick: () => void) {
   const INTERVAL_MS = 5 * 60 * 1000;
   setInterval(() => {
     if (navigator.onLine && document.visibilityState === 'visible') {
-      processQueue().catch(() => {});
+      tick();
     }
   }, INTERVAL_MS);
 }
@@ -42,6 +42,9 @@ function startInPagePeriodicSync() {
 export class Wayfinder {
   static async init(config: WayfinderConfig = {}) {
     _config = config;
+
+    // build instance first so listeners can call instance.processQueueNow()
+    const instance = new Wayfinder();
 
     // init plugins
     if (config.plugins?.length) {
@@ -52,25 +55,31 @@ export class Wayfinder {
       });
     }
 
+    // Service worker + messages
     if ('serviceWorker' in navigator) {
       try { await navigator.serviceWorker.register('/wayfinder-sw.js'); } catch {}
       navigator.serviceWorker.addEventListener('message', (e: MessageEvent) => {
         const msg = e.data as any;
-        if (msg?.type === 'wayfinder-sync') processQueue().catch(() => {});
+        if (msg?.type === 'wayfinder-sync') {
+          instance.processQueueNow().catch(() => {});
+        }
       });
       requestPeriodicBGSync().catch(() => {});
     }
 
+    // When we come back online, raise onOnline + processQueueNow (so onSync fires)
     window.addEventListener('online', async () => {
       await triggerHook('onOnline');
-      processQueue().catch(() => {});
+      instance.processQueueNow().catch(() => {});
     });
 
-    startInPagePeriodicSync();
+    // In-page periodic flush uses processQueueNow as well
+    startInPagePeriodicSync(() => instance.processQueueNow().catch(() => {}));
 
-    return new Wayfinder();
+    return instance;
   }
 
+  // expose a read-only event bus
   get events() { return bus; }
 
   async get<T = any>(
@@ -113,9 +122,11 @@ export class Wayfinder {
   }
 
   async processQueueNow() {
-    const mutations = await processQueue();         // now returns MutationEnvelope[]
-    for (const m of mutations) await triggerHook('onSync', m);
-    return mutations;
+    // run the low-level processor
+    const list = await processQueue(); // returns MutationEnvelope[]
+    // raise onSync for each successfully applied mutation
+    for (const m of list) await triggerHook('onSync', m);
+    return list;
   }
 
   // cache management API
