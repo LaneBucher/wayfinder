@@ -3,6 +3,8 @@
 **Wayfinder** is an offline-first data layer and caching runtime for Next.js apps.  
 It provides seamless offline experiences, request queueing, background sync, and plugin-based extensibility.
 
+**NOT STABLE.**
+
 ---
 
 ## Features
