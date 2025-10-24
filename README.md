@@ -155,16 +155,6 @@ To register plugins:
 
 ---
 
-## Future Roadmap
-
-- [ ] IndexedDB storage adapter for large datasets  
-- [ ] Delta-based mutation merging  
-- [ ] Plugin registry + dynamic loading  
-- [ ] Prisma/SQLite sync plugin  
-- [ ] Cross-tab broadcast updates  
-
----
-
 ## License
 
 MIT License © 2025 Lane Bucher
